@@ -29,9 +29,36 @@ classdef NNInput < AimsInput
     methods
         function obj = compute_convolution(obj)
             num_samples = size(obj.get_sample_names(),1);
-            
-            
+            filter = obj.convolution_filter;
+            stride = obj.cf_stride;
+            filter_height = size(filter,1);
+            filter_width = size(filter,2);
+            temp_layer_transformation = cell(num_samples,1);
+            for curr_sample=1:num_samples
+                curr_intensity = obj.get_intensity(curr_sample);
+                % left side curr iteration + right side of plus symbol computes the number of iteration
+                width_iter = 1 + floor((size(curr_intensity,2) - filter_width)/stride);
+                height_iter = 1 + floor((size(curr_intensity,1) - filter_height)/stride);
+                % initialize new dot product variable
+                temp_conv_layer = zeros(height_iter,width_iter);
+                row = 1;
+                for i=1:stride:height_iter*stride
+                    temp_intensity = curr_intensity(i:(i-1)+filter_height,:);
+                    col = 1;
+                    for j=1:stride:width_iter*stride
+                        sub_image = temp_intensity(:,j:(j-1)+filter_width);
+                        dot_product = dot(sub_image,filter,1);
+                        dot_product = sum(dot_product);
+                        temp_conv_layer(row,col) = dot_product;
+                        col = col + 1;
+                    end
+                    row = row + 1;
+                end
+                temp_layer_transformation{curr_sample,1} = temp_conv_layer;
+            end    
+            obj.layer_transformation = temp_layer_transformation;
         end
+        
         function obj = set_convolution_filter(obj,filter)
             obj.convolution_filter = filter;
         end

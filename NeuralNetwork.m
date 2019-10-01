@@ -30,11 +30,11 @@ nn = NNInput(cellPlaylist(:,sample_names_col),...
 cvn_fltr = [1,0,1;...
              0,1,0;...
              1,0,1];              
-nn.set_convolution_filter(cvn_fltr);
+nn = nn.set_convolution_filter(cvn_fltr);
 stride = 1;
-nn.set_cf_stride(stride);
-nn.compute_convolution();
-
+nn = nn.set_cf_stride(stride);
+nn = nn.compute_convolution();
+max_pool_size = 
 
 
 %{
