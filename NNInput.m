@@ -22,7 +22,7 @@ classdef NNInput < AimsInput
     properties
         convolution_filter;
         cf_stride;
-        max_pool_filter;
+        max_pool_filter_size;
         mp_stride;
         layer_transformation;
     end
@@ -58,6 +58,53 @@ classdef NNInput < AimsInput
             end    
             obj.layer_transformation = temp_layer_transformation;
         end
+        % compute max pool
+        function obj = compute_max_pool(obj)
+            num_samples = size(obj.get_sample_names(),1);
+            filter = obj.max_pool_filter_size;
+            stride = obj.mp_stride;
+            filter_height = filter(1);
+            filter_width = filter(2);
+            temp_layer_transformation = cell(num_samples,1);
+            last_layer = size(obj.layer_transformation,2);
+            for curr_sample=1:num_samples
+                curr_layer = obj.layer_transformation{curr_sample,last_layer};
+                % left side curr iteration + right side of plus symbol computes the number of iteration
+                width_iter = 1 + floor((size(curr_layer,2) - filter_width)/stride);
+                height_iter = 1 + floor((size(curr_layer,1) - filter_height)/stride);
+                % initialize new dot product variable
+                temp_conv_layer = zeros(height_iter,width_iter);
+                row = 1;
+                for i=1:stride:height_iter*stride
+                    temp_layer = curr_layer(i:(i-1)+filter_height,:);
+                    col = 1;
+                    for j=1:stride:width_iter*stride
+                        sub_image = temp_layer(:,j:(j-1)+filter_width);
+                        max_pool = max(max(sub_image));
+                        temp_conv_layer(row,col) = max_pool;
+                        col = col + 1;
+                    end
+                    row = row + 1;
+                end
+                temp_layer_transformation{curr_sample,1} = temp_conv_layer;
+            end    
+            obj.layer_transformation(:,last_layer+1) = temp_layer_transformation;
+        end
+        
+        function obj = apply_relu(obj)
+            num_samples = size(obj.get_sample_names(),1);
+            last_layer = size(obj.layer_transformation,2);
+            for curr_sample=1:num_samples
+                curr_layer = obj.layer_transformation{curr_sample,last_layer};
+                neg_index = curr_layer < 0;
+                if (nnz(neg_index))
+                    curr_layer(neg_index) = 0;
+                    obj.layer_transformation{curr_sample,last_layer} = curr_layer;
+                end                
+            end
+        end
+        
+        
         
         function obj = set_convolution_filter(obj,filter)
             obj.convolution_filter = filter;
@@ -65,8 +112,8 @@ classdef NNInput < AimsInput
         function obj = set_cf_stride(obj,stride)
             obj.cf_stride = stride;
         end
-        function obj = set_max_pool_filter(obj,filter)
-            obj.max_pool_filter = filter;
+        function obj = set_max_pool_filter_size(obj,filter)
+            obj.max_pool_filter_size = filter;
         end
         function obj = set_mp_stride(obj,stride)
             obj.mp_stride = stride;

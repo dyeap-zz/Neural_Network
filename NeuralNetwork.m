@@ -34,7 +34,15 @@ nn = nn.set_convolution_filter(cvn_fltr);
 stride = 1;
 nn = nn.set_cf_stride(stride);
 nn = nn.compute_convolution();
-max_pool_size = 
+%nn = nn.apply_relu();
+max_pool_width = 2;
+max_pool_height = 2;
+pool_stride = 2;
+nn = nn.set_max_pool_filter_size([max_pool_width,max_pool_height]);
+nn = nn.set_mp_stride(pool_stride);
+nn = nn.compute_max_pool();
+
+
 
 
 %{
