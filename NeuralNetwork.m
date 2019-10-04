@@ -25,22 +25,34 @@ nn = NNInput(cellPlaylist(:,sample_names_col),...
                   cellData(:,compensation_voltage_col),...
                   cellData(:,retention_time_col),...
                   cellData(:,intensity_col));
-              
-           
+num_epoch = 500;
+num_samples = size(nn.get_sample_names(),1);
+% Initialize random weights for filter
 cvn_fltr = [1,0,1;...
              0,1,0;...
-             1,0,1];              
+             1,0,1]; 
 nn = nn.set_convolution_filter(cvn_fltr);
 stride = 1;
 nn = nn.set_cf_stride(stride);
-nn = nn.compute_convolution();
-%nn = nn.apply_relu();
+
 max_pool_width = 2;
 max_pool_height = 2;
 pool_stride = 2;
 nn = nn.set_max_pool_filter_size([max_pool_width,max_pool_height]);
 nn = nn.set_mp_stride(pool_stride);
-nn = nn.compute_max_pool();
+
+for curr_epoch=1:num_epoch
+    % go through all samples
+    for curr_sample=1:num_samples
+        nn = nn.set_curr_epoch(curr_epoch);
+        curr_intensity = nn.get_intensity(curr_sample);
+        bool_conv = 1;
+        [nn,input_c] = nn.compute_convolution_or_pool(curr_intensity,bool_conv);
+        %nn = nn.apply_relu(); 
+        bool_conv = 0;
+        nn = nn.compute_convolution_or_pool(input_c,bool_conv);
+    end
+end
 
 
 

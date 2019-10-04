@@ -25,41 +25,65 @@ classdef NNInput < AimsInput
         max_pool_filter_size;
         mp_stride;
         layer_transformation;
+        curr_epoch;
     end
     methods
-        function obj = compute_convolution(obj)
-            num_samples = size(obj.get_sample_names(),1);
-            filter = obj.convolution_filter;
-            stride = obj.cf_stride;
+        function [obj,output] = compute_convolution_or_pool(obj,input,bool_conv)
+            % remove number of samples and save 
+            % X -- output activations of the previous layer, numpy array of shape (n_H_prev, n_W_prev) assuming input channels = 1
+            % W -- Weights, numpy array of size (f, f) assuming number of filters = 1
+            % Returns:
+            % H -- conv output, numpy array of size (n_H, n_W)
+            % cache -- cache of values needed for conv_backward() function
+            
+            if (bool_conv == 1)
+                stride = obj.cf_stride;
+                filter = obj.convolution_filter;
+            else
+                stride = obj.mp_stride;
+                % create a temp pool filter only used only to get size
+                filter = cell(obj.max_pool_filter_size);
+            end
+            
             filter_height = size(filter,1);
             filter_width = size(filter,2);
-            temp_layer_transformation = cell(num_samples,1);
-            for curr_sample=1:num_samples
-                curr_intensity = obj.get_intensity(curr_sample);
-                % left side curr iteration + right side of plus symbol computes the number of iteration
-                width_iter = 1 + floor((size(curr_intensity,2) - filter_width)/stride);
-                height_iter = 1 + floor((size(curr_intensity,1) - filter_height)/stride);
-                % initialize new dot product variable
-                temp_conv_layer = zeros(height_iter,width_iter);
-                row = 1;
-                for i=1:stride:height_iter*stride
-                    temp_intensity = curr_intensity(i:(i-1)+filter_height,:);
-                    col = 1;
-                    for j=1:stride:width_iter*stride
-                        sub_image = temp_intensity(:,j:(j-1)+filter_width);
-                        dot_product = dot(sub_image,filter,1);
-                        dot_product = sum(dot_product);
-                        temp_conv_layer(row,col) = dot_product;
-                        col = col + 1;
+            
+            % left side curr iteration + right side of plus symbol computes the number of iteration
+            width_iter = 1 + floor((size(input,2) - filter_width)/stride);
+            height_iter = 1 + floor((size(input,1) - filter_height)/stride);
+            % initialize new dot product variable
+            temp_conv_layer = zeros(height_iter,width_iter);
+            row = 1;
+            for i=1:stride:height_iter*stride
+                temp_intensity = input(i:(i-1)+filter_height,:);
+                col = 1;
+                for j=1:stride:width_iter*stride
+                    sub_image = temp_intensity(:,j:(j-1)+filter_width);
+                    if (bool_conv == 1)
+                        comp = obj.dot_product(sub_image,filter);
+                    else
+                        comp = obj.max_pool(sub_image);
                     end
-                    row = row + 1;
+                    temp_conv_layer(row,col) = comp;
+                    col = col + 1;
                 end
-                temp_layer_transformation{curr_sample,1} = temp_conv_layer;
-            end    
-            obj.layer_transformation = temp_layer_transformation;
+                row = row + 1;
+            end
+            output = temp_conv_layer;
+            obj.layer_transformation{obj.get_curr_epoch(),size(obj.layer_transformation,2)+1} = temp_conv_layer;
         end
+        
+        function double = dot_product(~,sub_image,filter)
+            dot_product = dot(sub_image,filter,1);
+            double = sum(dot_product);
+        end
+        
+        function double = max_pool(~,sub_image)
+            double = max(max(sub_image));
+        end
+        %{
         % compute max pool
-        function obj = compute_max_pool(obj)
+        function obj = compute_max_pool(obj,input)
             num_samples = size(obj.get_sample_names(),1);
             filter = obj.max_pool_filter_size;
             stride = obj.mp_stride;
@@ -67,30 +91,30 @@ classdef NNInput < AimsInput
             filter_width = filter(2);
             temp_layer_transformation = cell(num_samples,1);
             last_layer = size(obj.layer_transformation,2);
-            for curr_sample=1:num_samples
-                curr_layer = obj.layer_transformation{curr_sample,last_layer};
-                % left side curr iteration + right side of plus symbol computes the number of iteration
-                width_iter = 1 + floor((size(curr_layer,2) - filter_width)/stride);
-                height_iter = 1 + floor((size(curr_layer,1) - filter_height)/stride);
-                % initialize new dot product variable
-                temp_conv_layer = zeros(height_iter,width_iter);
-                row = 1;
-                for i=1:stride:height_iter*stride
-                    temp_layer = curr_layer(i:(i-1)+filter_height,:);
-                    col = 1;
-                    for j=1:stride:width_iter*stride
-                        sub_image = temp_layer(:,j:(j-1)+filter_width);
-                        max_pool = max(max(sub_image));
-                        temp_conv_layer(row,col) = max_pool;
-                        col = col + 1;
-                    end
-                    row = row + 1;
+      
+            curr_layer = obj.layer_transformation{curr_sample,last_layer};
+            % left side curr iteration + right side of plus symbol computes the number of iteration
+            width_iter = 1 + floor((size(input,2) - filter_width)/stride);
+            height_iter = 1 + floor((size(input,1) - filter_height)/stride);
+            % initialize new dot product variable
+            temp_conv_layer = zeros(height_iter,width_iter);
+            row = 1;
+            for i=1:stride:height_iter*stride
+                temp_layer = curr_layer(i:(i-1)+filter_height,:);
+                col = 1;
+                for j=1:stride:width_iter*stride
+                    sub_image = temp_layer(:,j:(j-1)+filter_width);
+                    max_pool = max(max(sub_image));
+                    temp_conv_layer(row,col) = max_pool;
+                    col = col + 1;
                 end
-                temp_layer_transformation{curr_sample,1} = temp_conv_layer;
-            end    
+                row = row + 1;
+            end
+            temp_layer_transformation{curr_sample,1} = temp_conv_layer;
+
             obj.layer_transformation(:,last_layer+1) = temp_layer_transformation;
         end
-        
+        %}
         function obj = apply_relu(obj)
             num_samples = size(obj.get_sample_names(),1);
             last_layer = size(obj.layer_transformation,2);
@@ -103,9 +127,12 @@ classdef NNInput < AimsInput
                 end                
             end
         end
-        
-        
-        
+        function obj = compute_forward_propagation(obj)
+            
+        end
+        function obj = set_curr_epoch(obj,epoch)
+            obj.curr_epoch = epoch;
+        end
         function obj = set_convolution_filter(obj,filter)
             obj.convolution_filter = filter;
         end
@@ -117,6 +144,12 @@ classdef NNInput < AimsInput
         end
         function obj = set_mp_stride(obj,stride)
             obj.mp_stride = stride;
+        end
+        function mat_double = get_latest_layer(obj)
+            mat_double = obj.layer_transformation{end,end};
+        end
+        function int = get_curr_epoch(obj)
+            int = obj.curr_epoch;
         end
     end
 end
