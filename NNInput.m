@@ -24,17 +24,25 @@ classdef NNInput < AimsInput
         cf_stride;
         max_pool_filter_size;
         mp_stride;
+        layer = {}
+        %conv_layer = {};
+        %pool = {};
+        %relu = {};
+        %layer_desc = struct("conv",{},"pool",{},"relu",{}...
+        %                   );
         layer_transformation;
         curr_epoch;
     end
     methods
-        function [obj,output] = compute_convolution_or_pool(obj,input,bool_conv)
+        function [obj,output] = compute_forward_convolution_or_pool(obj,input,bool_conv)
             % remove number of samples and save 
             % X -- output activations of the previous layer, numpy array of shape (n_H_prev, n_W_prev) assuming input channels = 1
             % W -- Weights, numpy array of size (f, f) assuming number of filters = 1
             % Returns:
             % H -- conv output, numpy array of size (n_H, n_W)
             % cache -- cache of values needed for conv_backward() function
+            
+            
             
             if (bool_conv == 1)
                 stride = obj.cf_stride;
@@ -81,40 +89,16 @@ classdef NNInput < AimsInput
         function double = max_pool(~,sub_image)
             double = max(max(sub_image));
         end
-        %{
-        % compute max pool
-        function obj = compute_max_pool(obj,input)
-            num_samples = size(obj.get_sample_names(),1);
-            filter = obj.max_pool_filter_size;
-            stride = obj.mp_stride;
-            filter_height = filter(1);
-            filter_width = filter(2);
-            temp_layer_transformation = cell(num_samples,1);
-            last_layer = size(obj.layer_transformation,2);
-      
-            curr_layer = obj.layer_transformation{curr_sample,last_layer};
-            % left side curr iteration + right side of plus symbol computes the number of iteration
-            width_iter = 1 + floor((size(input,2) - filter_width)/stride);
-            height_iter = 1 + floor((size(input,1) - filter_height)/stride);
-            % initialize new dot product variable
-            temp_conv_layer = zeros(height_iter,width_iter);
-            row = 1;
-            for i=1:stride:height_iter*stride
-                temp_layer = curr_layer(i:(i-1)+filter_height,:);
-                col = 1;
-                for j=1:stride:width_iter*stride
-                    sub_image = temp_layer(:,j:(j-1)+filter_width);
-                    max_pool = max(max(sub_image));
-                    temp_conv_layer(row,col) = max_pool;
-                    col = col + 1;
-                end
-                row = row + 1;
-            end
-            temp_layer_transformation{curr_sample,1} = temp_conv_layer;
-
-            obj.layer_transformation(:,last_layer+1) = temp_layer_transformation;
+        
+        function [obj,flat_input] = flatten(obj,input)
+            num_rows = size(input,1);
+            num_cols = size(input,2);
+            num_elements = num_rows*num_cols;
+            flat_input = reshape(input,[num_elements,1]);
         end
-        %}
+        function obj = compute_forward_fully_connected(obj,input)
+            
+        end
         function obj = apply_relu(obj)
             num_samples = size(obj.get_sample_names(),1);
             last_layer = size(obj.layer_transformation,2);
@@ -133,8 +117,13 @@ classdef NNInput < AimsInput
         function obj = set_curr_epoch(obj,epoch)
             obj.curr_epoch = epoch;
         end
-        function obj = set_convolution_filter(obj,filter)
-            obj.convolution_filter = filter;
+        function obj = set_convolution_filter(obj,num_filters,filter_size,num_conv_layers)
+            for curr_layer=1:num_conv_layer
+                for i = 1:num_filters
+                    convolution_filter{i,1} = rand(filter_size);
+                end
+                obj.layer_desc.conv()
+            end
         end
         function obj = set_cf_stride(obj,stride)
             obj.cf_stride = stride;
