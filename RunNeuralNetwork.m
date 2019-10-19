@@ -29,8 +29,18 @@ nn = NNInput(cellPlaylist(:,sample_names_col),...
 num_epoch = 500;
 num_samples = size(nn.get_sample_names(),1);
 % Try storing layer info
-layer1 = Layer();
-cnn = ConvolutionalNeuralNetwork();
+cnn = ConvolutionalNeuralNetwork(num_epoch);
+% name,num,num_filters,stride,filters,size_filter
+layer = Layer('c',1,4,2,[3,4]);
+cnn = cnn.append_layer_info(layer);
+layer = Layer('p',2,1,2,[2,2]);
+cnn = cnn.append_layer_info(layer);
+layer = Layer('r',3);
+cnn = cnn.append_layer_info(layer);
+% Set up layers
+
+
+
 cnn = cnn.append_layer_info(layer1);
 cnn = cnn.append_layer_info(layer1);
 % Initialize random weights for filter

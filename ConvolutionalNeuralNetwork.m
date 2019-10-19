@@ -5,13 +5,21 @@
 classdef ConvolutionalNeuralNetwork
     % methods accessible outside the class
     methods (Access = public)
-        function this = append_layer_info(this,layer)
-            this.layer_info(end+1) = {layer}; % append layer onto end
+        % Constructor
+        function obj = ConvolutionalNeuralNetwork(num_epoch)
+            obj.num_epoch = num_epoch;
+        end
+        % set methods
+        function obj = append_layer_info(obj,layer)
+            obj.layer_info(end+1) = {layer}; % append layer onto end  
+        end
+        funciton obj = run_one_layer(obj)
             
         end
     end
     properties
         layer_info = {}; % Everything inside can only be of type layer
-        num_conv_layer;
+        num_epoch;
+        curr_layer = 
     end   
 end
