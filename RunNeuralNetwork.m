@@ -22,31 +22,42 @@ retention_time_col = 2;
 intensity_col = 3;
 
 load('but_hex_nn.mat');
-nn = NNInput(cellPlaylist(:,sample_names_col),...
+nn_input = NNInput(cellPlaylist(:,sample_names_col),...
                   cellData(:,compensation_voltage_col),...
                   cellData(:,retention_time_col),...
                   cellData(:,intensity_col));
 num_epoch = 500;
-num_samples = size(nn.get_sample_names(),1);
+num_conv_layers = 3;
+num_samples = size(nn_input.get_sample_names(),1);
 % Set up layer info
-cnn = ConvolutionalNeuralNetwork(num_epoch);
+cnn = ConvolutionalNeuralNetwork(num_epoch,num_conv_layers);
 % name,num,num_filters,stride,filters,size_filter
 layer = Layer('c',1,4,2,[3,4]);
-cnn = cnn.append_layer_info(layer);
+cnn = cnn.append_layer(layer);
 layer = Layer('p',2,1,2,[2,2]);
-cnn = cnn.append_layer_info(layer);
+cnn = cnn.append_layer(layer);
 layer = Layer('r',3);
-cnn = cnn.append_layer_info(layer);
+cnn = cnn.append_layer(layer);
+% apply another layer
+layer = Layer('c',1,4,2,[3,4]);
+cnn = cnn.append_layer(layer);
+layer = Layer('p',2,1,2,[2,2]);
+cnn = cnn.append_layer(layer);
+layer = Layer('r',3);
+cnn = cnn.append_layer(layer);
 
 % Try running one layer
 for curr_epoch=1:num_epoch
     % go through all samples
     for curr_sample=1:num_samples
-        cnn = cnn.setup_begin_layer();
+        cnn = cnn.setup_begin_layer(nn_input.get_intensity(curr_sample));
+        cnn = cnn.run_one_layer();
+        cnn = cnn.run_one_layer();
+        cnn = cnn.run_one_layer();
     end
 end
-cnn = cnn.append_layer_info(layer1);
-cnn = cnn.append_layer_info(layer1);
+cnn = cnn.append_layer(layer1);
+cnn = cnn.append_layer(layer1);
 % Initialize random weights for filter
 num_filters = 3;
 filter_size = [3,3];

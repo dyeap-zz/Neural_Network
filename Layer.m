@@ -23,7 +23,6 @@ classdef Layer
         name, num;
         % Define convolution layer
         info; % will either be a convolution, pool or relu
-        % may or may not need
-        layer_io;
+        io = LayerIO;
     end
 end
