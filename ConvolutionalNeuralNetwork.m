@@ -34,9 +34,9 @@ classdef ConvolutionalNeuralNetwork
                 end
             elseif(curr_layer.name == 'p')
                 % must iterate through all filters used
-                num_col = size(input,2);
-                temp_output = cell([1,num_col]);
-                for i=1:num_col
+                num_filters = size(input,2);
+                temp_output = cell([1,num_filters]);
+                for i=1:num_filters
                     [obj,output] = obj.compute_forward_convolution_or_pool(input{1,i},curr_layer);
                     temp_output{1,i} = output;
                 end
@@ -60,6 +60,7 @@ classdef ConvolutionalNeuralNetwork
             % Returns:
             % H -- conv output, numpy array of size (n_H, n_W)
             % cache -- cache of values needed for conv_backward() function
+            
             bool_conv = 0;
             if (nargin == 4)
                 stride = curr_layer.info.get_stride();
@@ -78,19 +79,24 @@ classdef ConvolutionalNeuralNetwork
             width_iter = 1 + floor((size(input,2) - filter_width)/stride);
             height_iter = 1 + floor((size(input,1) - filter_height)/stride);
             % initialize new dot product variable
-            temp_conv_layer = zeros(height_iter,width_iter);
+            temp_conv_layer = cell(height_iter,width_iter);
+            % for b = 1
+            %temp_conv_layer = zeros(height_iter,width_iter);
             row = 1;
             for i=1:stride:height_iter*stride
-                temp_intensity = input(i:(i-1)+filter_height,:);
+                temp_intensity = input(i:(i-1)+filter_height,:,:);
                 col = 1;
                 for j=1:stride:width_iter*stride
-                    sub_image = temp_intensity(:,j:(j-1)+filter_width);
+                    sub_image = temp_intensity(:,j:(j-1)+filter_width,:);
                     if (bool_conv == 1)
-                        comp = obj.dot_product(sub_image,filter);
+                        dot_filter = repmat(filter,[1,1,size(sub_image,3)]);
+                        comp = obj.dot_product(sub_image,dot_filter);
                     else
                         comp = obj.max_pool(sub_image);
                     end
-                    temp_conv_layer(row,col) = comp;
+                    % if batch_size = 1
+                    %temp_conv_layer(row,col) = {comp};
+                    temp_conv_layer(row,col) = {comp};
                     col = col + 1;
                 end
                 row = row + 1;
@@ -100,6 +106,10 @@ classdef ConvolutionalNeuralNetwork
         function double = dot_product(~,sub_image,filter)
             dot_product = dot(sub_image,filter,1);
             double = sum(dot_product);
+            % should not be used because need to retain batch size
+            %if(size(double,3)>1)
+            %    double = sum(double,3);
+            %end
         end      
         function double = max_pool(~,sub_image)
             double = max(max(sub_image));

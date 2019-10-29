@@ -140,5 +140,23 @@ classdef NNInput < AimsInput
         function int = get_curr_epoch(obj)
             int = obj.curr_epoch;
         end
+        function mat = get_batch_intensity(obj,min_index,max_index)
+            if max_index > size(obj.intensity,1)
+                max_index = size(obj.intensity,1);
+            end
+            %num_images = max_index-min_index;
+            %height_image = size(obj.intensity{min_index,1},1);
+            temp = obj.intensity(min_index:max_index,:);
+            % convert to 3 dimensional array
+            %temp = permute(temp,[3,2,1]);
+            %temp = vertcat(temp{:});
+            %final = {}; 
+            final = [];
+            for i=min_index:max_index
+                curr_int = temp{i,1};
+                final = cat(3,final,curr_int);
+            end
+            mat = final;
+        end
     end
 end

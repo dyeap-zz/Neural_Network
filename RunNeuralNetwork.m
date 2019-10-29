@@ -26,6 +26,8 @@ nn_input = NNInput(cellPlaylist(:,sample_names_col),...
                   cellData(:,compensation_voltage_col),...
                   cellData(:,retention_time_col),...
                   cellData(:,intensity_col));
+
+batch_size = 5;
 num_epoch = 500;
 num_conv_layers = 3;
 num_samples = size(nn_input.get_sample_names(),1);
@@ -50,7 +52,9 @@ cnn = cnn.append_layer(layer);
 for curr_epoch=1:num_epoch
     % go through all samples
     for curr_sample=1:num_samples
-        cnn = cnn.setup_begin_layer(nn_input.get_intensity(curr_sample));
+        % grab the number of samples for a batch
+        % have for loop iterate 
+        cnn = cnn.setup_begin_layer(nn_input.get_batch_intensity(curr_sample,curr_sample+batch_size-1));
         cnn = cnn.run_one_layer();
         cnn = cnn.run_one_layer();
         cnn = cnn.run_one_layer();
