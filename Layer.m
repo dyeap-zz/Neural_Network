@@ -7,7 +7,10 @@ classdef Layer
             if(name == 'c') % convolutional layer
                 obj.info = Convolution(stride,num_filters,filter_size);
             elseif(name == 'p') % pool layer
-                obj.info = Pool(stride, filter_size);                
+                obj.info = Pool(stride, filter_size);
+            elseif(name == 'f')
+                obj.info = FullyConnectedNeuralNetwork()
+            end
             elseif(name == 'r')
                 % dont need to do anything
             else

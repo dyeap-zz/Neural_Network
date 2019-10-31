@@ -36,25 +36,31 @@ cnn = ConvolutionalNeuralNetwork(num_epoch,num_conv_layers);
 % name,num,num_filters,stride,filters,size_filter
 layer = Layer('c',1,4,2,[3,4]);
 cnn = cnn.append_layer(layer);
-layer = Layer('p',2,1,2,[2,2]);
+layer = Layer('r',2);
 cnn = cnn.append_layer(layer);
-layer = Layer('r',3);
+layer = Layer('p',3,1,2,[2,2]);
 cnn = cnn.append_layer(layer);
 % apply another layer
-layer = Layer('c',1,4,2,[3,4]);
+layer = Layer('c',4,5,2,[3,4]);
 cnn = cnn.append_layer(layer);
-layer = Layer('p',2,1,2,[2,2]);
+layer = Layer('r',5);
 cnn = cnn.append_layer(layer);
-layer = Layer('r',3);
+layer = Layer('p',6,1,2,[2,2]);
+cnn = cnn.append_layer(layer);
+% dummy layer
+layer = Layer('p',6,1,2,[2,2]);
 cnn = cnn.append_layer(layer);
 
 % Try running one layer
 for curr_epoch=1:num_epoch
     % go through all samples
-    for curr_sample=1:num_samples
+    for curr_sample=1:batch_size:num_samples
         % grab the number of samples for a batch
         % have for loop iterate 
         cnn = cnn.setup_begin_layer(nn_input.get_batch_intensity(curr_sample,curr_sample+batch_size-1));
+        cnn = cnn.run_one_layer();
+        cnn = cnn.run_one_layer();
+        cnn = cnn.run_one_layer();
         cnn = cnn.run_one_layer();
         cnn = cnn.run_one_layer();
         cnn = cnn.run_one_layer();

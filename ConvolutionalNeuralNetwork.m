@@ -24,12 +24,34 @@ classdef ConvolutionalNeuralNetwork
             curr_layer = obj.layer{curr_iter,curr_layer_number};
             input = obj.layer{curr_iter,curr_layer_number}.io.get_input;
             if (curr_layer.name == 'c')
+                % used for second convolution layer
+                %{
+                if (iscell(input))
+                    numFilters = size(input,2);
+                    tempInput = [];
+                    for currFilter=1:numFilters
+                        tempInput = cat(3,tempInput,input{1,currFilter});
+                    end
+                    input = tempInput;
+                end
+                %}
                 num_filters = curr_layer.info.get_num_filters();
                 temp_output = cell([1,num_filters]);
                 % compute multiple filters
                 for i=1:num_filters
                     filter = curr_layer.info.get_filter(i);
-                    [obj,output] = obj.compute_forward_convolution_or_pool(input,curr_layer,filter);
+                    if (iscell(input))
+                        % compute first one only to init szie
+                        [obj,temp] = obj.compute_forward_convolution(input{1,1},curr_layer,filter);
+                        output = zeros(size(temp));
+                        for prevFilterNum=1:size(input,2)
+                            tempInput = input{1,prevFilterNum};
+                            [obj,tempOutput] = obj.compute_forward_convolution(tempInput,curr_layer,filter);
+                            output = output + tempOutput;
+                        end
+                    else
+                        [obj,output] = obj.compute_forward_convolution(input,curr_layer,filter);
+                    end
                     temp_output{1,i} = output;
                 end
             elseif(curr_layer.name == 'p')
@@ -37,7 +59,7 @@ classdef ConvolutionalNeuralNetwork
                 num_filters = size(input,2);
                 temp_output = cell([1,num_filters]);
                 for i=1:num_filters
-                    [obj,output] = obj.compute_forward_convolution_or_pool(input{1,i},curr_layer);
+                    [obj,output] = obj.compute_forward_pool(input{1,i},curr_layer);
                     temp_output{1,i} = output;
                 end
             elseif(curr_layer.name == 'r')
@@ -53,7 +75,15 @@ classdef ConvolutionalNeuralNetwork
         function obj = setup_begin_layer(obj,input)
             obj.layer{obj.curr_iteration,1}.io = obj.layer{obj.curr_iteration,1}.io.set_input(input);
         end
-        function [obj,output] = compute_forward_convolution_or_pool(obj,input,curr_layer,curr_filter)
+        function [obj,output] = compute_forward_convolution(obj,input,curr_layer,curr_filter)
+            %filter_rep = repmat(curr_filter,[1,1,size(input,3)]);
+            stride = curr_layer.info.get_stride();
+            % To perform correlation must rotate filter
+            rotFilter = rot90(curr_filter,2);
+            temp = convn(input,rotFilter,'valid');
+            output = temp(1:stride:end,1:stride:end,:);
+        end
+        function [obj,output] = compute_forward_pool(obj,input,curr_layer)
             % remove number of samples and save 
             % X -- output activations of the previous layer, numpy array of shape (n_H_prev, n_W_prev) assuming input channels = 1
             % W -- Weights, numpy array of size (f, f) assuming number of filters = 1
@@ -61,16 +91,9 @@ classdef ConvolutionalNeuralNetwork
             % H -- conv output, numpy array of size (n_H, n_W)
             % cache -- cache of values needed for conv_backward() function
             
-            bool_conv = 0;
-            if (nargin == 4)
-                stride = curr_layer.info.get_stride();
-                filter = curr_filter;
-                bool_conv = 1;
-            else
-                stride = curr_layer.info.get_stride();
-                % create a temp pool filter only used only to get size
-                filter = cell(curr_layer.info.get_filter_size());
-            end
+            stride = curr_layer.info.get_stride();
+            % create a temp pool filter only used only to get size
+            filter = cell(curr_layer.info.get_filter_size());    
             
             filter_height = size(filter,1);
             filter_width = size(filter,2);
@@ -79,29 +102,32 @@ classdef ConvolutionalNeuralNetwork
             width_iter = 1 + floor((size(input,2) - filter_width)/stride);
             height_iter = 1 + floor((size(input,1) - filter_height)/stride);
             % initialize new dot product variable
-            temp_conv_layer = cell(height_iter,width_iter);
+            temp_output = [];
             % for b = 1
             %temp_conv_layer = zeros(height_iter,width_iter);
-            row = 1;
-            for i=1:stride:height_iter*stride
-                temp_intensity = input(i:(i-1)+filter_height,:,:);
-                col = 1;
-                for j=1:stride:width_iter*stride
-                    sub_image = temp_intensity(:,j:(j-1)+filter_width,:);
-                    if (bool_conv == 1)
-                        dot_filter = repmat(filter,[1,1,size(sub_image,3)]);
-                        comp = obj.dot_product(sub_image,dot_filter);
-                    else
+            %row = 1;
+            for sampleNum = 1:size(input,3)
+                sampleInput = input(:,:,sampleNum);
+                temp_pool_layer = zeros(height_iter,width_iter);
+                row = 1;
+                for i=1:stride:height_iter*stride
+                    temp_intensity = sampleInput(i:(i-1)+filter_height,:);
+                    col = 1;
+                    for j=1:stride:width_iter*stride
+                        sub_image = temp_intensity(:,j:(j-1)+filter_width);
+                        % compute max pool
                         comp = obj.max_pool(sub_image);
+
+                        % if batch_size = 1
+                        %temp_conv_layer(row,col) = {comp};
+                        temp_pool_layer(row,col) = comp;
+                        col = col + 1;
                     end
-                    % if batch_size = 1
-                    %temp_conv_layer(row,col) = {comp};
-                    temp_conv_layer(row,col) = {comp};
-                    col = col + 1;
+                    row = row + 1;
                 end
-                row = row + 1;
+                temp_output = cat(3,temp_output,temp_pool_layer);
             end
-            output = temp_conv_layer;
+            output = temp_output;
         end
         function double = dot_product(~,sub_image,filter)
             dot_product = dot(sub_image,filter,1);
@@ -115,9 +141,9 @@ classdef ConvolutionalNeuralNetwork
             double = max(max(sub_image));
         end
         function output = apply_relu(obj,input)
-            num_col = size(input,2);
-            output = cell([1,num_col]);
-            for i=1:num_col
+            num_filters = size(input,2);
+            output = cell([1,num_filters]);
+            for i=1:num_filters
                 curr_image = input{1,i};
                 neg_index = curr_image < 0;
                 if (nnz(neg_index))
