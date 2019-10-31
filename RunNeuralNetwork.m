@@ -26,15 +26,15 @@ nn_input = NNInput(cellPlaylist(:,sample_names_col),...
                   cellData(:,compensation_voltage_col),...
                   cellData(:,retention_time_col),...
                   cellData(:,intensity_col));
-
+              
 batch_size = 5;
 num_epoch = 500;
 num_conv_layers = 3;
 num_samples = size(nn_input.get_sample_names(),1);
 % Set up layer info
-cnn = ConvolutionalNeuralNetwork(num_epoch,num_conv_layers);
+cnn = ConvolutionalNeuralNetwork(num_epoch);
 % name,num,num_filters,stride,filters,size_filter
-layer = Layer('c',1,4,2,[3,4]);
+layer = Layer('c',1,4,1,[3,4]);
 cnn = cnn.append_layer(layer);
 layer = Layer('r',2);
 cnn = cnn.append_layer(layer);
@@ -47,9 +47,14 @@ layer = Layer('r',5);
 cnn = cnn.append_layer(layer);
 layer = Layer('p',6,1,2,[2,2]);
 cnn = cnn.append_layer(layer);
-% dummy layer
-layer = Layer('p',6,1,2,[2,2]);
+layer = Layer('flat',7);
 cnn = cnn.append_layer(layer);
+layer = Layer('fc',8,-1,-1,-1,150,'tanh',0);
+cnn = cnn.append_layer(layer);
+layer = Layer('fc',9,-1,-1,-1,size(unique(cellClassifications),1),'softmax',1);
+cnn = cnn.append_layer(layer);
+% dummy layer
+
 
 % Try running one layer
 for curr_epoch=1:num_epoch
@@ -58,6 +63,9 @@ for curr_epoch=1:num_epoch
         % grab the number of samples for a batch
         % have for loop iterate 
         cnn = cnn.setup_begin_layer(nn_input.get_batch_intensity(curr_sample,curr_sample+batch_size-1));
+        cnn = cnn.run_one_layer();
+        cnn = cnn.run_one_layer();
+        cnn = cnn.run_one_layer();
         cnn = cnn.run_one_layer();
         cnn = cnn.run_one_layer();
         cnn = cnn.run_one_layer();

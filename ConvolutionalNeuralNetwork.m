@@ -6,7 +6,7 @@ classdef ConvolutionalNeuralNetwork
     % methods accessible outside the class
     methods (Access = public)
         % Constructor
-        function obj = ConvolutionalNeuralNetwork(num_epoch,num_conv_layers)
+        function obj = ConvolutionalNeuralNetwork(num_epoch)
             obj.num_epoch = num_epoch;    
         end
         % set methods
@@ -64,14 +64,26 @@ classdef ConvolutionalNeuralNetwork
                 end
             elseif(curr_layer.name == 'r')
                 temp_output = obj.apply_relu(input);
+            elseif(strcmp(curr_layer.name,'flat'))
+                temp_output = curr_layer.info.compute(input);
+            elseif(strcmp(curr_layer.name,'fc'))
+                %{
+                if (curr_layer.info.get_bool_finalFC())
+                    numNodes = unique(cellClassifications);
+                    obj.layer{curr_iter,curr_layer_number}.info.set_numNodes(numNodes);
+                end
+                %}
+                temp_output = curr_layer.info.computeFCLayer(input);
             else
                 disp("Error have not created such layer")
             end
-            obj.layer{curr_iter,curr_layer_number}.io = obj.layer{curr_iter,curr_layer_number}.io.set_output(temp_output);
-            obj.curr_layer_num =  obj.curr_layer_num + 1;
-            curr_layer_number = obj.curr_layer_num;
-            obj.layer{curr_iter,curr_layer_number}.io = obj.layer{curr_iter,curr_layer_number}.io.set_input(temp_output);
-        end
+            if (obj.curr_layer_num < size(obj.layer,2))
+                obj.layer{curr_iter,curr_layer_number}.io = obj.layer{curr_iter,curr_layer_number}.io.set_output(temp_output);
+                obj.curr_layer_num =  obj.curr_layer_num + 1;
+                curr_layer_number = obj.curr_layer_num;
+                obj.layer{curr_iter,curr_layer_number}.io = obj.layer{curr_iter,curr_layer_number}.io.set_input(temp_output);              
+            end
+            end
         function obj = setup_begin_layer(obj,input)
             obj.layer{obj.curr_iteration,1}.io = obj.layer{obj.curr_iteration,1}.io.set_input(input);
         end

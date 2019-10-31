@@ -1,16 +1,17 @@
 classdef Layer
     methods (Access = public)
         % Constructor
-        function obj = Layer(name,num,num_filters,stride,filter_size)
+        function obj = Layer(name,num,num_filters,stride,filter_size,fc_numNodes,method,bool_finalFC)
             obj.name = name;
             obj.num = num;
             if(name == 'c') % convolutional layer
                 obj.info = Convolution(stride,num_filters,filter_size);
             elseif(name == 'p') % pool layer
                 obj.info = Pool(stride, filter_size);
-            elseif(name == 'f')
-                obj.info = FullyConnectedNeuralNetwork()
-            end
+            elseif(strcmp(name,'flat'))
+                obj.info = Flatten();
+            elseif(strcmp(name,'fc'))
+                obj.info = FullyConnectedNeuralNetwork(fc_numNodes,method,bool_finalFC);
             elseif(name == 'r')
                 % dont need to do anything
             else
