@@ -26,10 +26,15 @@ nn_input = NNInput(cellPlaylist(:,sample_names_col),...
                   cellData(:,compensation_voltage_col),...
                   cellData(:,retention_time_col),...
                   cellData(:,intensity_col));
-              
+temp = categorical(cellClassifications);
+unique_labels = categories(temp);
+labels = zeros(size(cellClassifications,1),1);
+for i=1:size(unique_labels,1)
+    index = cellClassifications == string(cellClassifications(i,1));
+    labels(index) = i;
+end
 batch_size = 5;
 num_epoch = 500;
-num_conv_layers = 3;
 num_samples = size(nn_input.get_sample_names(),1);
 % Set up layer info
 cnn = ConvolutionalNeuralNetwork(num_epoch);
@@ -51,7 +56,7 @@ layer = Layer('flat',7);
 cnn = cnn.append_layer(layer);
 layer = Layer('fc',8,-1,-1,-1,150,'tanh',0);
 cnn = cnn.append_layer(layer);
-layer = Layer('fc',9,-1,-1,-1,size(unique(cellClassifications),1),'softmax',1);
+layer = Layer('fc',9,-1,-1,-1,size(unique_labels,1),'softmax',1);
 cnn = cnn.append_layer(layer);
 % dummy layer
 
@@ -72,6 +77,14 @@ for curr_epoch=1:num_epoch
         cnn = cnn.run_one_layer();
         cnn = cnn.run_one_layer();
         cnn = cnn.run_one_layer();
+        
+        one_hot_labels = zeros(size(unique_labels,1),batch_size);
+        temp_labels = labels(curr_sample:batch_size,1)';
+        for col = 1:batch_size
+            one_hot_row = temp_labels(1,col);
+            one_hot_labels(one_hot_row,col) = 1;
+        end
+        cnn = cnn.run_one_layer_bp(one_hot_labels);
     end
 end
 cnn = cnn.append_layer(layer1);

@@ -3,7 +3,7 @@ classdef ActivationFunction
         function obj = ActivationFunction(method)
             obj.method = method;
         end
-        function output = compute(obj,input)
+        function output = compute(obj,input,error,bool_comp_error)
             meth = obj.method;
             if (strcmp(meth,'relu'))
                 neg_index = input < 0;
@@ -26,7 +26,10 @@ classdef ActivationFunction
                 numerator= exp(input);
                 sumOfExp = sum(numerator,1); 
                 tempOutput = (numerator)./repmat(sumOfExp, [size(input,1),1]);
-                
+                if (bool_comp_error)
+                    err1 = repmat(sum(error.*input, 1), [size(error,1) 1]);
+                    tempOutput = -input.* (err1 -error);
+                end
             end
             output = tempOutput;
                 %{

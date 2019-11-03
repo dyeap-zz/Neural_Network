@@ -13,16 +13,16 @@ classdef ConvolutionalNeuralNetwork
         function obj = append_layer(obj,layer)
             % initialize all iterations
             num_col = size(obj.layer,2) +1;
-            for curr_iter = 1:obj.num_epoch
-                obj.layer(curr_iter,num_col) = {layer}; % append layer onto end  
+            for curr_batch = 1:obj.num_epoch
+                obj.layer(curr_batch,num_col) = {layer}; % append layer onto end  
             end
         end
         % For debugging
         function obj = run_one_layer(obj)
-            curr_iter = obj.curr_iteration;
+            curr_batch = obj.curr_iteration;
             curr_layer_number = obj.curr_layer_num;
-            curr_layer = obj.layer{curr_iter,curr_layer_number};
-            input = obj.layer{curr_iter,curr_layer_number}.io.get_input;
+            curr_layer = obj.layer{curr_batch,curr_layer_number};
+            input = obj.layer{curr_batch,curr_layer_number}.io.get_input();
             if (curr_layer.name == 'c')
                 % used for second convolution layer
                 %{
@@ -70,18 +70,18 @@ classdef ConvolutionalNeuralNetwork
                 %{
                 if (curr_layer.info.get_bool_finalFC())
                     numNodes = unique(cellClassifications);
-                    obj.layer{curr_iter,curr_layer_number}.info.set_numNodes(numNodes);
+                    obj.layer{curr_batch,curr_layer_number}.info.set_numNodes(numNodes);
                 end
                 %}
                 temp_output = curr_layer.info.computeFCLayer(input);
             else
                 disp("Error have not created such layer")
             end
+            obj.layer{curr_batch,curr_layer_number}.io = obj.layer{curr_batch,curr_layer_number}.io.set_output(temp_output);
             if (obj.curr_layer_num < size(obj.layer,2))
-                obj.layer{curr_iter,curr_layer_number}.io = obj.layer{curr_iter,curr_layer_number}.io.set_output(temp_output);
                 obj.curr_layer_num =  obj.curr_layer_num + 1;
                 curr_layer_number = obj.curr_layer_num;
-                obj.layer{curr_iter,curr_layer_number}.io = obj.layer{curr_iter,curr_layer_number}.io.set_input(temp_output);              
+                obj.layer{curr_batch,curr_layer_number}.io = obj.layer{curr_batch,curr_layer_number}.io.set_input(temp_output);              
             end
             end
         function obj = setup_begin_layer(obj,input)
@@ -164,8 +164,20 @@ classdef ConvolutionalNeuralNetwork
                 output{1,i}= curr_image;
             end
         end
+        %%% Used to compute one layer back propogation
+        function obj = run_one_layer_bp(obj,batch_training_labels)
+            lastLayerNum = size(obj.layer,2);
+            curr_batch = obj.curr_iteration;
+            lastLayerOutput = obj.layer{curr_batch,lastLayerNum}.io.get_output();
+            obj.error = lastLayerOutput - batch_training_labels;
+            error_sq = obj.error.^2;
+            obj.loss = sum(error_sq(:))/(2*size(error_sq,2)); %loss over all examples
+            
+        end
     end
     properties
+        loss;
+        error;
         layer = {}; % Everything inside can only be of type layer
         num_epoch;
         curr_layer_num = 1;
