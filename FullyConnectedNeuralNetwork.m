@@ -5,7 +5,7 @@ classdef FullyConnectedNeuralNetwork
             obj.numNodes = numNodes;
             obj.activation = ActivationFunction(method);
         end
-        function output = computeFCLayer(obj,input)
+        function [output,fc_obj] = computeFCLayer(obj,input)
             %cnn.layers{l}.W =0.5*rand([no_of_nodes cnn.layers{l}.no_of_inputs]) -0.25;
             %cnn.layers{l}.b = 0.5*rand([no_of_nodes 1]) - 0.25;
             % setup the weights and b for computation
@@ -18,6 +18,7 @@ classdef FullyConnectedNeuralNetwork
             Y = obj.weight*input + obj.b;
             tempOutput = obj.activation.compute(Y);
             output = tempOutput;
+            fc_obj = obj;
         end
         function bool = get_bool_finalFC(obj)
             bool = obj.bool_finalFC;
@@ -25,8 +26,12 @@ classdef FullyConnectedNeuralNetwork
         function obj = set_numNodes(obj,numNodes)
             obj.numNodes = numNodes;
         end
+        function weights = get_weights(obj)
+            weights = obj.weight;
+        end
     end
     properties
+        error; % er{1}
         activation;
         bool_finalFC;
         numNodes;

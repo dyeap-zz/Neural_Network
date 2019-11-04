@@ -18,13 +18,14 @@ classdef Layer
                 disp("Layer is not yet defined")
             end
         end
-        function 
-            % calculate error on last layer
-            cnn.layers{cnn.no_of_layers}.dW = cnn.layers{cnn.no_of_layers}.er{1} * ( cnn.layers{cnn.no_of_layers-1}.outputs)' / size(cnn.layers{cnn.no_of_layers}.er{1}, 2);
-            cnn.layers{cnn.no_of_layers}.db = mean( cnn.layers{cnn.no_of_layers}.er{1}, 2);
-        end
         function obj = set_input(obj,input)
             obj.layer_io = LayerIO(input);
+        end
+        function name = get_name(obj)
+            name = obj.name;
+        end
+        function num = get_num(obj)
+            num = obj.num;
         end
     end
     properties
@@ -33,6 +34,6 @@ classdef Layer
         % Define convolution layer
         info; % will either be a convolution, pool or relu
         io = LayerIO;
-        error = Error;
+        error = Error(); % class error
     end
 end

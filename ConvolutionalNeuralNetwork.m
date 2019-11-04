@@ -73,7 +73,8 @@ classdef ConvolutionalNeuralNetwork
                     obj.layer{curr_batch,curr_layer_number}.info.set_numNodes(numNodes);
                 end
                 %}
-                temp_output = curr_layer.info.computeFCLayer(input);
+                [temp_output,fc_obj] = curr_layer.info.computeFCLayer(input);
+                obj.layer{curr_batch,curr_layer_number}.info = fc_obj;
             else
                 disp("Error have not created such layer")
             end
@@ -168,20 +169,41 @@ classdef ConvolutionalNeuralNetwork
         function obj = run_one_layer_bp(obj,batch_training_labels)
             lastLayerNum = size(obj.layer,2);
             curr_batch = obj.curr_iteration;
-            lastLayerOutput = obj.layer{curr_batch,lastLayerNum}.io.get_output();
-            obj.error = lastLayerOutput - batch_training_labels;
-            error_sq = obj.error.^2;
-            obj.loss = sum(error_sq(:))/(2*size(error_sq,2)); %loss over all examples
+            curr_layer_number = obj.curr_layer_num;
+            if(curr_layer_number==size(obj.layer,2))
+                lastLayerOutput = obj.layer{curr_batch,lastLayerNum}.io.get_output();
+                obj.label_error = lastLayerOutput - batch_training_labels; % only used for last label error
+                error_sq = obj.label_error.^2;
+                obj.loss = sum(error_sq(:))/(2*size(error_sq,2)); %loss over all examples
+            end
             
+            curr_layer = obj.layer{curr_batch,curr_layer_number};
+            prev_layer = obj.layer{curr_batch,curr_layer_number-1};
+            curr_output = curr_layer.io.get_output();
+            prev_output = prev_layer.io.get_output();
+            
+            if(strcmp(curr_layer.get_name(),'fc') && curr_layer_number==size(obj.layer,2))
+                % compute dw and db
+                obj.layer{curr_batch,curr_layer_number}.error = curr_layer.error.computeSoftMax(obj.label_error,prev_output,curr_output);             
+            elseif(strcmp(curr_layer.get_name(),'fc') && curr_layer_number<size(obj.layer,2))
+                % need to test out tanh layer
+                front_layer = obj.layer{curr_batch,curr_layer_number+1};
+                tempError = front_layer.info.get_weights()' * front_layer.error.get_currLayerError();% 15x5 = 2x15* front_error 2x5
+                %cnn.layers{i}.er{1} = ( (cnn.layers{i+1}.W)' * cnn.layers{i+1}.er{1} ); %temp error because it gets overridden by the following line of code
+                obj.layer{curr_batch,curr_layer_number}.error = curr_layer.error.computeTanh(tempError,prev_output,curr_output);
+                %obj = curr_layer.error.computeFCLayer(obj.label_error,prev_output,curr_output);
+            end
+            obj.curr_layer_num = curr_layer_number - 1;
         end
     end
     properties
         loss;
-        error;
-        layer = {}; % Everything inside can only be of type layer
+        label_error; % only used for the last layer error
+        layer = {}; % Everything inside can only be of type layer of fcnn
         num_epoch;
         curr_layer_num = 1;
         curr_iteration = 1;
+        
         %layerio; % rows represent iteration and the col represents the layer
     end   
 end

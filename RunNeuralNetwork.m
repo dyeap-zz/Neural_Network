@@ -54,12 +54,10 @@ layer = Layer('p',6,1,2,[2,2]);
 cnn = cnn.append_layer(layer);
 layer = Layer('flat',7);
 cnn = cnn.append_layer(layer);
-layer = Layer('fc',8,-1,-1,-1,150,'tanh',0);
+layer = Layer('fc',8,-1,-1,-1,15,'tanh',0);
 cnn = cnn.append_layer(layer);
 layer = Layer('fc',9,-1,-1,-1,size(unique_labels,1),'softmax',1);
 cnn = cnn.append_layer(layer);
-% dummy layer
-
 
 % Try running one layer
 for curr_epoch=1:num_epoch
@@ -84,6 +82,8 @@ for curr_epoch=1:num_epoch
             one_hot_row = temp_labels(1,col);
             one_hot_labels(one_hot_row,col) = 1;
         end
+        cnn = cnn.run_one_layer_bp(one_hot_labels);
+        cnn = cnn.run_one_layer_bp(one_hot_labels);
         cnn = cnn.run_one_layer_bp(one_hot_labels);
     end
 end
