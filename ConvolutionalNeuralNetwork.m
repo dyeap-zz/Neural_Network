@@ -182,9 +182,11 @@ classdef ConvolutionalNeuralNetwork
             curr_output = curr_layer.io.get_output();
             prev_output = prev_layer.io.get_output();
             
+            % used for fc is last layer
             if(strcmp(curr_layer.get_name(),'fc') && curr_layer_number==size(obj.layer,2))
                 % compute dw and db
                 obj.layer{curr_batch,curr_layer_number}.error = curr_layer.error.computeSoftMax(obj.label_error,prev_output,curr_output);             
+            % used for fc layer before last layer
             elseif(strcmp(curr_layer.get_name(),'fc') && curr_layer_number<size(obj.layer,2))
                 % need to test out tanh layer
                 front_layer = obj.layer{curr_batch,curr_layer_number+1};
@@ -192,6 +194,49 @@ classdef ConvolutionalNeuralNetwork
                 %cnn.layers{i}.er{1} = ( (cnn.layers{i+1}.W)' * cnn.layers{i+1}.er{1} ); %temp error because it gets overridden by the following line of code
                 obj.layer{curr_batch,curr_layer_number}.error = curr_layer.error.computeTanh(tempError,prev_output,curr_output);
                 %obj = curr_layer.error.computeFCLayer(obj.label_error,prev_output,curr_output);
+            elseif(curr_layer.get_name()=='p')
+                % find out what front layer is 
+                front_layer = obj.layer{curr_batch,curr_layer_number+1};
+                if(strcmp(front_layer.get_name(),'flat'))
+                    front_layer = obj.layer{curr_batch,curr_layer_number+2};
+                end
+                % Do this if fc is the front layer
+                if(strcmp(front_layer.get_name(),'fc'))
+                    %er = ( (cnn.layers{i+1}.W)' * cnn.layers{i+1}.er{1} ); 
+                    er = front_layer().info.get_weights()'*front_layer.error.get_currLayerError();
+                    % iterate through all filters and arrange errors in
+                    % correct fashion
+                    % iterate through all blocks of output/filters
+                    firstBIndex = 0;
+                    for i=1:size(curr_layer.io.get_output(),2)
+                        %sz = size(cnn.layers{i}.featuremaps{j});
+                        sizeFilter = size(curr_layer.io.get_output{1,i});
+                        vertLength = sizeFilter(1)*sizeFilter(2);
+                        %cnn.layers{i}.er{j} = reshape(er(sz2+1 : sz2+sz1, : ), sz(1), sz(2), sz(3));
+                        blockError = reshape(er(firstBIndex+1 : firstBIndex+vertLength, : ), sizeFilter(1), sizeFilter(2), sizeFilter(3));
+                        obj.layer{curr_batch,curr_layer_number}.error = obj.layer{curr_batch,curr_layer_number}.error.set_currLayerError(blockError,i); 
+                        firstBIndex = firstBIndex + vertLength;
+                    end
+                    
+                    % iterate through all filters
+                    stride = curr_layer.info.get_stride(); % get pool stride 
+                    curr_layer = obj.layer{curr_batch,curr_layer_number}; % this is needed because error was written in and it needs it
+                    for i=1:size(curr_layer.io.get_output(),2)
+                        sizeFilter = size(curr_layer.io.get_output{1,i});
+                        % ss1 = 1:sz(1); ss1 =kron(ss1, ones([1 zz]));
+                        ss1 = 1:sizeFilter(1); ss1 =kron(ss1, ones([1 stride]));
+                        ss2 = 1:sizeFilter(2); ss2 =kron(ss2, ones([1 stride]));
+                        sf{1}=ss1; sf{2}=ss2;
+                        er =curr_layer.error.get_currLayerBError(i);
+                        new_er = er(sf{:},:);
+                        blockError = new_er./(stride*stride); % kron( cnn.layers{cnn.no_of_layers}.er{i}, ones([zz zz]));
+                        obj.layer{curr_batch,curr_layer_number}.error = curr_layer.error.set_currLayerError(blockError,i);
+                    end
+                end
+                % if front layer is convolutional layer then put code here          
+            elseif(curr_layer.get_name()=='c')
+                %er =cnn.layers{i+1}.er; % error from the pool layer with the number of filters
+                % Need to implement this
             end
             obj.curr_layer_num = curr_layer_number - 1;
         end

@@ -54,8 +54,8 @@ layer = Layer('p',6,1,2,[2,2]);
 cnn = cnn.append_layer(layer);
 layer = Layer('flat',7);
 cnn = cnn.append_layer(layer);
-layer = Layer('fc',8,-1,-1,-1,15,'tanh',0);
-cnn = cnn.append_layer(layer);
+%layer = Layer('fc',8,-1,-1,-1,15,'tanh',0);
+%cnn = cnn.append_layer(layer);
 layer = Layer('fc',9,-1,-1,-1,size(unique_labels,1),'softmax',1);
 cnn = cnn.append_layer(layer);
 
@@ -74,7 +74,7 @@ for curr_epoch=1:num_epoch
         cnn = cnn.run_one_layer();
         cnn = cnn.run_one_layer();
         cnn = cnn.run_one_layer();
-        cnn = cnn.run_one_layer();
+        %cnn = cnn.run_one_layer();
         
         one_hot_labels = zeros(size(unique_labels,1),batch_size);
         temp_labels = labels(curr_sample:batch_size,1)';
@@ -82,9 +82,13 @@ for curr_epoch=1:num_epoch
             one_hot_row = temp_labels(1,col);
             one_hot_labels(one_hot_row,col) = 1;
         end
+        cnn = cnn.run_one_layer_bp(one_hot_labels); % softmax
+        %cnn = cnn.run_one_layer_bp(one_hot_labels); % tanh
+        cnn = cnn.run_one_layer_bp(one_hot_labels); % flatten
         cnn = cnn.run_one_layer_bp(one_hot_labels);
-        cnn = cnn.run_one_layer_bp(one_hot_labels);
-        cnn = cnn.run_one_layer_bp(one_hot_labels);
+        cnn = cnn.run_one_layer_bp(one_hot_labels); % relu layer
+        cnn = cnn.run_one_layer_bp(one_hot_labels); % convolution layer need to implement this functionality
+        % after need to do gradient decsnet
     end
 end
 cnn = cnn.append_layer(layer1);
